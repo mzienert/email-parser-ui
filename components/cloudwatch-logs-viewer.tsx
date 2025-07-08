@@ -25,6 +25,8 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [selectedLogGroup, setSelectedLogGroup] = useState<string>("");
   const [logGroups, setLogGroups] = useState<LogGroup[]>([]);
+  const [allLogGroups, setAllLogGroups] = useState<LogGroup[]>([]);
+  const [showAllGroups, setShowAllGroups] = useState(false);
   const [client, setClient] = useState<CloudWatchLogsClient | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -56,41 +58,61 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
         });
         const response = await client.send(command);
         
-        // Filter to only the specific email parsing related log groups
-        const targetLogGroups = [
-          "email-parser",
-          "email-parsing-api", 
-          "email-processor",
-          "supplier-matcher"
-        ];
-        
+        // Map all log groups
         const allGroups = response.logGroups?.map((group) => ({
           logGroupName: group.logGroupName || "",
           displayName: group.logGroupName?.replace("/aws/lambda/", "") || "",
           isActive: false,
         })) || [];
 
-        // Filter to only include our target log groups or BucketNotificationsHandler
-        const groups = allGroups.filter(group => 
-          targetLogGroups.includes(group.displayName) ||
-          group.displayName.includes("BucketNotificationsHandler")
-        );
+        setAllLogGroups(allGroups);
 
-        setLogGroups(groups);
+        // Filter for email parsing related log groups (more flexible matching)
+        const emailParsingKeywords = [
+          "email-parser", "email-parsing", "email-processor", "supplier-matcher",
+          "emailparser", "emailprocessor", "supplierMatcher", "SupplierMatcher",
+          "BucketNotifications", "bucket-notifications",
+          // Common AWS CDK patterns
+          "EmailParser", "EmailProcessing", "SupplierMatching"
+        ];
         
-        // Auto-select email-parser if available, otherwise email-processor
-        const emailParserGroup = groups.find(g => g.displayName === "email-parser");
-        const emailProcessorGroup = groups.find(g => g.displayName === "email-processor");
+        const filteredGroups = allGroups.filter(group => {
+          const displayName = group.displayName.toLowerCase();
+          return emailParsingKeywords.some(keyword => 
+            displayName.includes(keyword.toLowerCase())
+          );
+        });
+
+        setLogGroups(filteredGroups);
         
-        if (emailParserGroup) {
-          setSelectedLogGroup(emailParserGroup.logGroupName);
-        } else if (emailProcessorGroup) {
-          setSelectedLogGroup(emailProcessorGroup.logGroupName);
-        } else if (groups.length > 0) {
-          setSelectedLogGroup(groups[0].logGroupName);
+        // Auto-select best match
+        const priorityOrder = ["email-parser", "emailparser", "email-processor", "emailprocessor"];
+        let selectedGroup = null;
+        
+        for (const priority of priorityOrder) {
+          selectedGroup = filteredGroups.find(g => 
+            g.displayName.toLowerCase().includes(priority)
+          );
+          if (selectedGroup) break;
         }
-      } catch {
-        setError("Failed to fetch log groups. Check your AWS permissions.");
+        
+        if (!selectedGroup && filteredGroups.length > 0) {
+          selectedGroup = filteredGroups[0];
+        }
+        
+        if (selectedGroup) {
+          setSelectedLogGroup(selectedGroup.logGroupName);
+        }
+
+        // If no filtered groups found, show debug info
+        if (filteredGroups.length === 0) {
+          console.log("No matching log groups found. Available groups:", allGroups.map(g => g.displayName));
+          setError(`No email parsing log groups found. Found ${allGroups.length} total log groups. Toggle "Show All Groups" to see them.`);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        setError(`Failed to fetch log groups: ${errorMessage}. Check AWS credentials and region.`);
+        console.error("CloudWatch fetch error:", error);
       }
     };
 
@@ -198,9 +220,18 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
               Filtering: {emailId}
             </Badge>
           )}
+          <Badge variant="outline" className="ml-auto text-xs">
+            {process.env.NEXT_PUBLIC_AWS_REGION || "us-west-2"}
+          </Badge>
         </CardTitle>
         <CardDescription>
           Real-time logs from Lambda functions during email processing
+          {logGroups.length > 0 && (
+            <span className="ml-2">({logGroups.length} groups found)</span>
+          )}
+          {allLogGroups.length > 0 && logGroups.length === 0 && (
+            <span className="ml-2 text-yellow-600">({allLogGroups.length} total groups available)</span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -213,12 +244,23 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
             disabled={isLoading}
           >
             <option value="">Select Log Group</option>
-            {logGroups.map((group) => (
+            {(showAllGroups ? allLogGroups : logGroups).map((group) => (
               <option key={group.logGroupName} value={group.logGroupName}>
                 {group.displayName}
               </option>
             ))}
           </select>
+          
+          {allLogGroups.length > 0 && (
+            <Button
+              onClick={() => setShowAllGroups(!showAllGroups)}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              {showAllGroups ? `Show Filtered (${logGroups.length})` : `Show All (${allLogGroups.length})`}
+            </Button>
+          )}
           
           <Button
             onClick={toggleStreaming}
@@ -317,6 +359,42 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
           <span>Selected group: {selectedLogGroup.replace("/aws/lambda/", "") || "None"}</span>
           <span>Status: {isStreaming ? "Streaming" : "Paused"}</span>
         </div>
+
+        {/* Debug Info */}
+        {(error || allLogGroups.length > 0) && (
+          <details className="text-xs bg-muted p-3 rounded-lg">
+            <summary className="cursor-pointer font-medium">Debug Info</summary>
+            <div className="mt-2 space-y-2">
+              <div><strong>Environment:</strong> {process.env.NODE_ENV || "development"}</div>
+              <div><strong>AWS Region:</strong> {process.env.NEXT_PUBLIC_AWS_REGION || "us-west-2"}</div>
+              <div><strong>AWS Access Key:</strong> {process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID ? "✓ Set" : "✗ Missing"}</div>
+              <div><strong>AWS Secret Key:</strong> {process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY ? "✓ Set" : "✗ Missing"}</div>
+              <div><strong>Total Log Groups Found:</strong> {allLogGroups.length}</div>
+              <div><strong>Filtered Log Groups:</strong> {logGroups.length}</div>
+              {allLogGroups.length > 0 && logGroups.length === 0 && (
+                <div className="mt-2">
+                  <strong>Available Log Groups:</strong>
+                  <div className="mt-1 max-h-32 overflow-y-auto bg-slate-100 dark:bg-slate-800 p-2 rounded">
+                    {allLogGroups.slice(0, 20).map(group => (
+                      <div key={group.logGroupName} className="text-xs font-mono">
+                        {group.displayName}
+                      </div>
+                    ))}
+                    {allLogGroups.length > 20 && (
+                      <div className="text-xs text-muted-foreground">... and {allLogGroups.length - 20} more</div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {error && (
+                <div className="mt-2">
+                  <strong>Error:</strong>
+                  <div className="text-red-600 bg-red-50 p-2 rounded mt-1">{error}</div>
+                </div>
+              )}
+            </div>
+          </details>
+        )}
       </CardContent>
     </Card>
   );
