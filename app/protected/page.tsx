@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { EmailUploadWrapper } from "@/components/email-upload-wrapper";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -11,11 +12,9 @@ export default async function ProtectedPage() {
 
   return (
     <div className="flex-1 w-full flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-bold">Protected Dashboard</h1>
-      <p className="text-muted-foreground">
-        Welcome! This is your protected dashboard area.
-      </p>
-      {/* Content will be built here */}
+      <div className="mt-8">
+        <EmailUploadWrapper />
+      </div>
     </div>
   );
 }
