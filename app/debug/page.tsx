@@ -7,6 +7,9 @@ export default function DebugPage() {
           {JSON.stringify({
             SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || "MISSING",
             SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "SET" : "MISSING",
+            AWS_REGION: process.env.NEXT_PUBLIC_AWS_REGION || "MISSING",
+            AWS_ACCESS_KEY_ID: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID ? "SET" : "MISSING",
+            AWS_SECRET_ACCESS_KEY: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY ? "SET" : "MISSING",
             NODE_ENV: process.env.NODE_ENV,
             VERCEL_ENV: process.env.VERCEL_ENV,
           }, null, 2)}
@@ -14,6 +17,9 @@ export default function DebugPage() {
       </div>
       <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         If SUPABASE_URL or SUPABASE_ANON_KEY show as &quot;MISSING&quot;, the environment variables don&apos;t have the correct NEXT_PUBLIC_ prefix.
+      </p>
+      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        For CloudWatch logs viewer to work, you need to set AWS credentials: NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, and NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY.
       </p>
     </div>
   );
