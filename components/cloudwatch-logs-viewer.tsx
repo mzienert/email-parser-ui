@@ -40,7 +40,7 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
         },
       });
       setClient(awsClient);
-    } catch (err) {
+    } catch {
       setError("Failed to initialize AWS client. Check your credentials.");
     }
   }, []);
@@ -89,7 +89,7 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
         } else if (groups.length > 0) {
           setSelectedLogGroup(groups[0].logGroupName);
         }
-      } catch (err) {
+      } catch {
         setError("Failed to fetch log groups. Check your AWS permissions.");
       }
     };
@@ -134,8 +134,8 @@ export function CloudWatchLogsViewer({ emailId, isVisible }: LogsViewerProps) {
           scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
         }
       }, 100);
-    } catch (err) {
-      setError(`Failed to fetch logs: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } catch (error) {
+      setError(`Failed to fetch logs: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }

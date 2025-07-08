@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, AlertCircle, CheckCircle, Mail, Phone, Building2, Shield, MapPin, Star, MessageSquare, FileText } from "lucide-react";
+import { RefreshCw, AlertCircle, CheckCircle, Mail, Phone, Building2, Shield, Star, MessageSquare, FileText } from "lucide-react";
 
 interface ApiResultsViewerProps {
   emailId?: string;
@@ -199,9 +199,10 @@ export function ApiResultsViewer({ emailId }: ApiResultsViewerProps) {
     }
   };
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
+     useEffect(() => {
+     fetchAllData();
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
   const formatScore = (score: number) => {
     return (score * 100).toFixed(1);
@@ -416,7 +417,7 @@ export function ApiResultsViewer({ emailId }: ApiResultsViewerProps) {
       {activeTab === 'matches' && (
         <Card>
           <CardHeader>
-            <CardTitle>Email Matches (GET /emails/{'{id}'}/matches)</CardTitle>
+            <CardTitle>Email Matches (GET /emails/{`{id}`}/matches)</CardTitle>
             <CardDescription>
               Historical email processing results from test emails
             </CardDescription>
@@ -515,7 +516,7 @@ export function ApiResultsViewer({ emailId }: ApiResultsViewerProps) {
           <CardContent>
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                Use the "Test Feedback" buttons in the Email Matches tab to submit feedback to the API.
+                Use the &quot;Test Feedback&quot; buttons in the Email Matches tab to submit feedback to the API.
               </div>
               
               <div className="grid grid-cols-3 gap-4 text-sm">
